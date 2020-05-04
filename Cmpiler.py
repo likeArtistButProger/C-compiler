@@ -44,20 +44,20 @@ class Tree(object):
         for i in range(0, len(list)):
             self.data.append(list[i])
 
-    def showChildrenTokens(self):
-        # print("")
-        # print("Show Children function call")
-        # print("************")
-        # print("Token of node:")
-        # print(self.left)
-        # print("Children:")
-        # print(self.child)
-        # print("Token of children:")
-        # print(len(self.child))
-        # for i in range(0, len(self.child)):
-        #     print(self.child[i].left)
-        # print("***********")
-        print("")
+    # def showChildrenTokens(self):
+    #     print("")
+    #     print("Show Children function call")
+    #     print("************")
+    #     print("Token of node:")
+    #     print(self.left)
+    #     print("Children:")
+    #     print(self.child)
+    #     print("Token of children:")
+    #     print(len(self.child))
+    #     for i in range(0, len(self.child)):
+    #         print(self.child[i].left)
+    #     print("***********")
+    #     print("")
 
     def setTokensForTreePart(self):
         for i in range(0, len(self.child)):
@@ -89,20 +89,28 @@ def lex(src_file):
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     line_num = 1
     line_start = 0
+    prevTokenFlag = 0
     for mo in re.finditer(tok_regex, src_file):
         kind = mo.lastgroup
         value = mo.group()
         column = mo.start() - line_start
         if(kind == 'Integerliteral'):
+            if(prevTokenFlag == 1):
+                raise RuntimeError("Missing space character between identifier and value")
             value = int(value)
         elif((kind == 'Identifier') and (value in keywords)):
+            if(value == "return"):
+                prevTokenFlag = 1
             kind = value
         elif(kind == 'Newline'):
             line_start = mo.end()
             line_num += 1
             continue
         elif(kind == 'Skip'):
-            continue
+            if(prevTokenFlag == 1):
+                prevTokenFlag = 0
+            if(prevTokenFlag == 0):
+                continue
         elif(kind == 'Mismatch'):
             raise RuntimeError(f'{value!r} unexpected line {line_num}')
         # print("Token: ", kind, " ", value, " ", line_num, " ", column, ";")
@@ -115,7 +123,7 @@ def lex(src_file):
 #PARSER SECTION
 
 def parse_exp(tokens):
-    print("Parsing exponent!")
+    # print("Parsing exponent!")
     exp = Tree()
     tok = next(tokens)
     if(tok.type != "Integerliteral"):
@@ -128,7 +136,7 @@ def parse_exp(tokens):
 
 def parse_statement(tokens):
     statement = Tree()
-    print("Parsing statement!")
+    # print("Parsing statement!")
     tok = next(tokens)
     if(tok.type != "return"):
         raise RuntimeError(f'Parse_statement error, supposed to be return')
@@ -149,9 +157,24 @@ def parse_statement(tokens):
     statement.setTokensForTreePart()
     return statement
 
+# def parse_params(tokens):
+#     params = Tree()
+#     print("Parsing params!")
+#     tok = next(tokens)
+#     while(tok.type != "Closeparenthesis"):
+#         if(tok.type == "Openbrace"):
+#             raise RuntimeError("Parse function error, supposed to be Closeparethesis sign )")
+        
+#         params.createChildren(1)
+#         params.child[len(params.data)-1].left = tok
+#         tok = next(tokens)
+#         # print("Current token is: ", tok)
+#     params.setTokensForTreePart()
+#     return params
+
 def parse_function(tokens):
     function = Tree()
-    print("Parsing function")
+    # print("Parsing function")
     tok = next(tokens)
     if(tok.type != "int"):
         raise RuntimeError(f'Parse_function error, supposed to be Identifier!(int)')
@@ -171,10 +194,22 @@ def parse_function(tokens):
 
     function.createChildren(1)
     function.child[len(function.data)-1].left = tok
+
+
+    #-----------------------------------------------------------------------
+    # tok = next(tokens)
+    # print("Function data: ", function.child[len(function.data)].left)
+    # params = parse_params(tokens)
+    # print("Params child is: ", params)    
+    # function.createChildren(len(params))
+    # ----------------------------------------------------------------------  
+    
     tok = next(tokens)
+
+    # print("Token is:", tok)
+
     if(tok.type != "Closeparenthesis"):
         raise RuntimeError(f'Parse_function error, supposed to be Closeparenthesis sign!')
-
 
     function.createChildren(1)
     function.child[len(function.data)-1].left = tok
@@ -190,21 +225,23 @@ def parse_function(tokens):
     function.createChildren(1)
     function.child[len(function.data)-1].left = statement
 
+
+
     tok = next(tokens)
+
+    
     if(tok.type != "Closebrace"):
         raise RuntimeError(f'Parse_function error, supposed to be Closebrace sign!')
 
-
     function.createChildren(1)
     function.child[len(function.data)-1].left = tok
-    # print(function.child[len(function.data)-1].left)
 
     function.setTokensForTreePart()
     return function
 
 
 def parse(tokens):
-    print("Parsing program!")
+    # print("Parsing program!")
     program = Tree()
     function = parse_function(tokens)
     program.createChildren(1)
@@ -255,6 +292,24 @@ def generate_expression(data, i):
 
     return generated_asm
 
+
+
+# def generate_params(data, i):
+
+#     generated_asm = "params: ("
+
+#     i = i 
+
+#     while(data[i].type != "Closeparenthesis"):
+#         generated_asm += data[i].value + " "
+#         i += 1
+
+#     generated_asm += ")\n"
+
+#     return generated_asm
+
+
+
 def generate(tree):
 
     generated_asm = ""
@@ -264,27 +319,27 @@ def generate(tree):
     clear_from_nodes(tree, clear_tokens, 0)
 
 
-    print("Clear tokens: ", clear_tokens)
+    # print("Clear tokens: ", clear_tokens)
 
     i = 0
     func_name = ""
 
     while(i != len(clear_tokens)):
-        print(clear_tokens[i])
-        print(i)
+        # print(clear_tokens[i])
+        # print(i)
         if(clear_tokens[i].type == 'int'):
-            print(clear_tokens[i])
+            # print(clear_tokens[i])
             i += 1
             if(clear_tokens[i].type == 'Identifier'):
                 func_name = clear_tokens[i].value
                 i += 1
-                print(clear_tokens[i])
+                # print(clear_tokens[i])
                 if(clear_tokens[i].type == 'Openparenthesis'):
-                    i += 1
-                    print(clear_tokens[i])
+                    i += 1 
+                    # print(clear_tokens[i])
                     if(clear_tokens[i].type == 'Closeparenthesis'):
                         i += 1
-                        print(clear_tokens[i])
+                        # print(clear_tokens[i])
                 
                         if(clear_tokens[i].type == 'Openbrace'):
                             generated_asm += ".globl " + func_name + " \n"
@@ -301,35 +356,8 @@ def generate(tree):
         i+= 1
 
 
-    print(generated_asm)
+    print("Generated asm:\n", generated_asm)
     return generated_asm
-
-    # if(isSubTree == 0):
-    #     ASTStartData = tree.child[0].left.data
-    # if(isSubTree == 1):
-    #     ASTStartData = tree
-    # # print("Start data: ", ASTStartData)
-
-    # for token in ASTStartData:
-    #     # print("Token is: ", token)
-    #     # print("Type of token is:", type(token))
-    #     if(type(token) == type(Token('','','',''))):
-    #         print("Token type and value are: ", token.type, " | " , token.value)
-
-    #     else:
-    #         # print("Token Data is: ", token.data)
-    #         generate(token.data, outputFile, 1)      
-    
-    # print("ASTStart is: ", ASTStartData)
-
-
-
-    # print(len(tree))
-
-
-#    for i in range(0, (len(tree)//4) + 1):         #Calculation for right amount of nodes in AST, it found token if
-
-
 
 
 inputFile = "out_2.c"  #sys.argv[1]
@@ -342,24 +370,12 @@ outputFile = os.path.splitext("out_2.c")[0] + ".s"
 
 with open(inputFile, 'r') as infile, open(outputFile, 'w') as outfile:
     contents = infile.read()
+    if(contents[-1] != "}"):
+        raise(RuntimeError("Parse function error, supposed to be }"))   # Because of 
     AST = parse(lex(contents)) #parsedContents
-    generate(AST)
-    # print("AST is: ", AST)
-    # print("AST child is: ", AST.child)
-    # print("AST data is: ", AST.data)
-    # print("AST left is: ", AST.left)
-    # for token in AST.child[0].left.data:
-    #     i += 1
-    #     print("Data ", i, " is:" , token)
-    #     print("Data type is", i, " is:" , type(token))
-    #     if(type(token) == type(Tree)):
-    #         print("Node child")
-    # print("Child data is: ", AST.child[0].left.data[5].data)
+    result = generate(AST)
 
-
-
-
-    # AST.showChildrenTokens()
+    outfile.write(result)
 
 
 
@@ -380,3 +396,6 @@ with open(inputFile, 'r') as infile, open(outputFile, 'w') as outfile:
     # extract the named "ret" group, containing the return value
 #    retval = match.group('ret')
 #    outfile.write(assembly_format.format(retval))
+
+
+# <<OLD>>    for i in range(0, (len(tree)//4) + 1):         #Calculation for right amount of nodes in AST, it found token if <<OLD>>
